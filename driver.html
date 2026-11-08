@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ROMA DR سائق</title>
+<meta name="theme-color" content="#0d1117">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Rubik:wght@500;600;700&display=swap">
+<style>
+/* Driver screen: one column, online switch on top, incoming requests, then the active trip */
+:root {
+  --bg: #0d1117; --surface: #151b23; --surface-2: #1c2430; --line: #263040;
+  --fg: #eef2f7; --muted: #8e9aab; --accent: #4c8dff; --accent-fg: #ffffff; --good: #4ade80;
+  --font-display: 'Rubik', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  --font-body: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, system-ui, sans-serif;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f3f6fa; --surface: #ffffff; --surface-2: #edf1f7; --line: #dbe2ec;
+    --fg: #0f1722; --muted: #5b6a7d; --accent: #2563eb; --accent-fg: #ffffff; --good: #15803d;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #f3f6fa; --surface: #ffffff; --surface-2: #edf1f7; --line: #dbe2ec;
+  --fg: #0f1722; --muted: #5b6a7d; --accent: #2563eb; --accent-fg: #ffffff; --good: #15803d;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: calc(16px + env(safe-area-inset-top, 0px)) calc(24px + env(safe-area-inset-bottom, 0px));
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.app { max-width: 480px; margin-inline: auto; display: grid; gap: 16px; }
+.wordmark { font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: 0.04em; line-height: 1.1; }
+.sub { color: var(--muted); font-size: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.title { font-weight: 600; font-size: 17px; }
+.field { display: flex; align-items: center; background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 0 14px; min-height: 52px; }
+.field input { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; padding: 12px 0; font-size: 16px; }
+.field:focus-within { border-color: var(--accent); }
+label { display: grid; gap: 6px; font-weight: 600; }
+.btn { width: 100%; min-height: 54px; border: 0; border-radius: 16px; background: var(--accent); color: var(--accent-fg); font-weight: 600; font-size: 17px; }
+.btn.off { background: var(--surface-2); color: var(--fg); }
+.btn:disabled { background: var(--surface-2); color: var(--muted); cursor: not-allowed; }
+.btn.small { min-height: 46px; font-size: 16px; }
+.state { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.on { background: var(--good); }
+.req { background: var(--surface-2); border-radius: 16px; padding: 12px 14px; display: grid; gap: 8px; }
+.route { font-weight: 600; overflow-wrap: anywhere; }
+.meta { color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 4px 14px; font-variant-numeric: tabular-nums; }
+.big { font-family: var(--font-display); font-weight: 600; font-size: 22px; font-variant-numeric: tabular-nums; }
+.phone { font-family: var(--font-display); font-size: 20px; direction: ltr; unicode-bidi: plaintext; user-select: all; overflow-wrap: anywhere; }
+.msg { background: var(--surface-2); border-radius: 14px; padding: 12px 14px; font-size: 15px; }
+.note { color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="wordmark">ROMA DR</div>
+    <div class="sub">تطبيق السائق</div>
+  </header>
+
+  <section class="card">
+    <div class="title">بياناتك</div>
+    <label for="dname">الاسم
+      <span class="field"><input id="dname" type="text" autocomplete="name"></span>
+    </label>
+    <label for="dphone">رقم الهاتف
+      <span class="field"><input id="dphone" type="tel" inputmode="tel" autocomplete="tel" dir="ltr"></span>
+    </label>
+    <div class="note">تُحفظ على هاتفك، ويراها الزبون عندما تقبل طلبه.</div>
+  </section>
+
+  <button class="btn" id="online" type="button"></button>
+  <div class="state"><span class="dot" id="dot"></span><span id="stateText"></span></div>
+  <div class="msg" id="msg" role="status" hidden></div>
+
+  <section class="card" id="activeCard" hidden>
+    <div class="title">رحلتك الحالية</div>
+    <div class="route" id="aRoute"></div>
+    <div class="meta"><span id="aFare"></span><span id="aKm"></span></div>
+    <div>الزبون: <strong id="aName"></strong></div>
+    <div class="phone" id="aPhone"></div>
+    <button class="btn" id="step" type="button"></button>
+  </section>
+
+  <section class="card" id="listCard" hidden>
+    <div class="title">طلبات جديدة</div>
+    <div id="list" style="display:grid;gap:10px"></div>
+    <div class="note" id="empty"></div>
+  </section>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getFirestore, collection, query, where, doc, onSnapshot, updateDoc, runTransaction, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+var firebaseConfig = {
+  apiKey: "AIzaSyCwVkyyZBUtxthiahZz4gb7WxRqzLCdXx0",
+  authDomain: "roma-dr.firebaseapp.com",
+  projectId: "roma-dr",
+  storageBucket: "roma-dr.firebasestorage.app",
+  messagingSenderId: "731987941297",
+  appId: "1:731987941297:web:558791382c0088297ecf90"
+};
+var db = getFirestore(initializeApp(firebaseConfig));
+
+var KEY = 'romadr.driver.v1';
+var ACTIVE = ['accepted', 'arrived', 'started'];
+var NEXT = { accepted: ['arrived', 'وصلت للزبون'], arrived: ['started', 'بدأت الرحلة'], started: ['completed', 'أنهيت الرحلة'] };
+var s = { name: '', phone: '', online: false, rides: [], activeId: null, active: null, sound: false, first: true };
+var unsubList = null, unsubActive = null, audio = null;
+
+function $(id) { return document.getElementById(id); }
+function money(n) { return Number(n).toLocaleString('en-US') + ' ل.س'; }
+function save() { try { localStorage.setItem(KEY, JSON.stringify({ name: s.name, phone: s.phone, activeId: s.activeId })); } catch (e) {} }
+function load() {
+  try {
+    var d = JSON.parse(localStorage.getItem(KEY) || '{}');
+    if (typeof d.name === 'string') s.name = d.name;
+    if (typeof d.phone === 'string') s.phone = d.phone;
+    if (typeof d.activeId === 'string') s.activeId = d.activeId;
+  } catch (e) {}
+}
+function say(text) { var m = $('msg'); m.hidden = !text; m.textContent = text || ''; }
+
+function beep() {
+  if (!s.sound) return;
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    var o = audio.createOscillator(), g = audio.createGain();
+    o.connect(g); g.connect(audio.destination);
+    o.frequency.value = 880; g.gain.value = 0.2;
+    o.start(); o.stop(audio.currentTime + 0.35);
+  } catch (e) {}
+}
+
+function render() {
+  var busy = !!s.active && ACTIVE.indexOf(s.active.status) > -1;
+  var b = $('online');
+  b.textContent = s.online ? 'أوقف الاستقبال' : 'ابدأ استقبال الطلبات';
+  b.className = 'btn' + (s.online ? ' off' : '');
+  $('dot').className = 'dot' + (s.online ? ' on' : '');
+  $('stateText').textContent = s.online ? 'أنت متاح، تظهر لك الطلبات الجديدة هنا' : 'أنت غير متاح';
+
+  $('activeCard').hidden = !busy;
+  if (busy) {
+    var r = s.active;
+    $('aRoute').textContent = (r.fromName || '') + ' ← ' + (r.toName || '');
+    $('aFare').textContent = money(r.fare);
+    $('aKm').textContent = r.km + ' كم';
+    $('aName').textContent = r.riderName || '';
+    $('aPhone').textContent = r.riderPhone || '';
+    $('step').textContent = NEXT[r.status][1];
+  }
+
+  $('listCard').hidden = !s.online || busy;
+  var list = $('list');
+  list.textContent = '';
+  s.rides.forEach(function (r) {
+    var card = document.createElement('div'); card.className = 'req';
+    var route = document.createElement('div'); route.className = 'route'; route.textContent = (r.fromName || '') + ' ← ' + (r.toName || '');
+    var meta = document.createElement('div'); meta.className = 'meta';
+    var mins = r.createdAt && r.createdAt.toMillis ? Math.max(0, Math.round((Date.now() - r.createdAt.toMillis()) / 60000)) : 0;
+    [money(r.fare), r.km + ' كم', 'قبل ' + mins + ' د'].forEach(function (x) {
+      var sp = document.createElement('span'); sp.textContent = x; meta.appendChild(sp);
+    });
+    var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn small'; btn.textContent = 'اقبل الطلب';
+    btn.addEventListener('click', function () { accept(r.id); });
+    card.appendChild(route); card.appendChild(meta); card.appendChild(btn);
+    list.appendChild(card);
+  });
+  $('empty').textContent = s.rides.length ? '' : 'لا توجد طلبات الآن. اترك الصفحة مفتوحة وسيظهر الطلب فور وصوله.';
+}
+
+function listen() {
+  stopListen();
+  var q = query(collection(db, 'rides'), where('status', '==', 'searching'));
+  s.first = true;
+  unsubList = onSnapshot(q, function (snap) {
+    var added = false;
+    snap.docChanges().forEach(function (c) { if (c.type === 'added' && !s.first) added = true; });
+    s.first = false;
+    s.rides = snap.docs.map(function (d) { var x = d.data(); x.id = d.id; return x; })
+      .sort(function (a, b) {
+        var ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : Date.now();
+        var tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : Date.now();
+        return tb - ta;
+      });
+    if (added) beep();
+    say('');
+    render();
+  }, function () { say('تعذّر الاتصال بقاعدة البيانات. تأكد من الإنترنت.'); });
+}
+function stopListen() { if (unsubList) { unsubList(); unsubList = null; } s.rides = []; }
+
+function watchActive(id) {
+  if (unsubActive) { unsubActive(); unsubActive = null; }
+  s.activeId = id; save();
+  if (!id) { s.active = null; render(); return; }
+  unsubActive = onSnapshot(doc(db, 'rides', id), function (snap) {
+    s.active = snap.exists() ? snap.data() : null;
+    if (!s.active || ACTIVE.indexOf(s.active.status) === -1) {
+      if (s.active && s.active.status === 'completed') say('تمت الرحلة. أحسنت.');
+      if (s.active && s.active.status === 'cancelled') say('ألغى الزبون الطلب.');
+      s.activeId = null; s.active = null; save();
+    }
+    render();
+  });
+}
+
+async function accept(id) {
+  if (!s.name.trim() || !s.phone.trim()) { say('اكتب اسمك ورقم هاتفك في الأعلى أولاً.'); window.scrollTo(0, 0); return; }
+  try {
+    var ref = doc(db, 'rides', id);
+    await runTransaction(db, async function (tx) {
+      var snap = await tx.get(ref);
+      if (!snap.exists() || snap.data().status !== 'searching') throw new Error('taken');
+      tx.update(ref, { status: 'accepted', driverName: s.name.trim(), driverPhone: s.phone.trim(), acceptedAt: serverTimestamp() });
+    });
+    say('');
+    watchActive(id);
+  } catch (e) {
+    say(e && e.message === 'taken' ? 'سبقك سائق آخر إلى هذا الطلب.' : 'تعذّر قبول الطلب. حاول مرة ثانية.');
+  }
+}
+
+$('online').addEventListener('click', function () {
+  if (s.online) { s.online = false; stopListen(); render(); return; }
+  s.online = true; s.sound = true;
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    if (audio.state === 'suspended') audio.resume();
+  } catch (e) {}
+  listen(); render();
+});
+$('step').addEventListener('click', async function () {
+  if (!s.activeId || !s.active || !NEXT[s.active.status]) return;
+  try { await updateDoc(doc(db, 'rides', s.activeId), { status: NEXT[s.active.status][0] }); }
+  catch (e) { say('تعذّر تحديث الحالة. حاول مرة ثانية.'); }
+});
+$('dname').addEventListener('input', function (e) { s.name = e.target.value; save(); });
+$('dphone').addEventListener('input', function (e) { s.phone = e.target.value; save(); });
+
+load();
+$('dname').value = s.name;
+$('dphone').value = s.phone;
+if (s.activeId) watchActive(s.activeId);
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ROMA DR</title>
+<meta name="theme-color" content="#0d1117">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Rubik:wght@500;600;700&display=swap">
+<style>
+/* Layout: one-column phone app, three tabs (rides, history, profile), fixed bottom nav, dark-first like the FlutterFlow mockup */
+:root {
+  --bg: #0d1117;
+  --surface: #151b23;
+  --surface-2: #1c2430;
+  --line: #263040;
+  --fg: #eef2f7;
+  --muted: #8e9aab;
+  --accent: #4c8dff;
+  --accent-fg: #ffffff;
+  --good: #4ade80;
+  --map: #101722;
+  --street: #223044;
+  --font-display: 'Rubik', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  --font-body: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, system-ui, sans-serif;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f3f6fa; --surface: #ffffff; --surface-2: #edf1f7; --line: #dbe2ec;
+    --fg: #0f1722; --muted: #5b6a7d; --accent: #2563eb; --accent-fg: #ffffff;
+    --good: #15803d; --map: #e8eef6; --street: #cdd7e4;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #f3f6fa; --surface: #ffffff; --surface-2: #edf1f7; --line: #dbe2ec;
+  --fg: #0f1722; --muted: #5b6a7d; --accent: #2563eb; --accent-fg: #ffffff;
+  --good: #15803d; --map: #e8eef6; --street: #cdd7e4;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: calc(16px + env(safe-area-inset-top, 0px)) calc(104px + env(safe-area-inset-bottom, 0px));
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app { max-width: 480px; margin-inline: auto; display: grid; gap: 16px; }
+
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.brand { min-width: 0; }
+.wordmark { font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: 0.04em; line-height: 1.1; }
+.sub { color: var(--muted); font-size: 14px; }
+.lang {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+  padding: 8px 16px; min-height: 40px; font-size: 14px;
+}
+
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; min-width: 0; }
+.tile .lbl { color: var(--muted); font-size: 13px; }
+.tile .val { font-family: var(--font-display); font-weight: 600; font-size: 24px; line-height: 1.3; margin-top: 4px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.tile .val small { font-size: 13px; font-weight: 500; color: var(--muted); }
+.tile .hint { color: var(--good); font-size: 13px; margin-top: 2px; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.field-label { font-weight: 600; font-size: 17px; }
+.field {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 0 14px; min-height: 52px;
+}
+.field svg { flex: none; color: var(--muted); }
+.field input { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; padding: 12px 0; font-size: 16px; }
+.field input::placeholder { color: var(--muted); }
+.field:focus-within { border-color: var(--accent); }
+.field .picked { flex: 1; min-width: 0; font-size: 16px; overflow-wrap: anywhere; }
+
+.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.chip {
+  flex: none; background: var(--surface-2); border: 1px solid transparent; border-radius: 999px;
+  padding: 8px 16px; min-height: 40px; font-size: 15px; white-space: nowrap;
+}
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
+
+.suggest { display: grid; gap: 4px; }
+.suggest button {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: start;
+  background: transparent; border: 0; border-bottom: 1px solid var(--line); padding: 10px 4px; min-height: 44px;
+}
+.suggest button:last-child { border-bottom: 0; }
+.suggest .dist { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+.map-wrap { border-radius: 16px; overflow: hidden; border: 1px solid var(--line); }
+.map-wrap svg { display: block; width: 100%; height: auto; max-width: 100%; }
+.map-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 600; }
+.map-title span { color: var(--muted); font-weight: 400; font-size: 13px; }
+.m-bg { fill: var(--map); }
+.m-street { stroke: var(--street); fill: none; stroke-width: 7; stroke-linecap: round; }
+.m-route { stroke: var(--accent); fill: none; stroke-width: 4; stroke-linecap: round; }
+.m-dot { fill: var(--muted); }
+.m-label { fill: var(--muted); font-size: 9.5px; font-family: var(--font-body); text-anchor: middle; }
+.m-label.on { fill: var(--fg); font-weight: 600; }
+.m-from { fill: var(--accent); stroke: var(--bg); stroke-width: 2.5; }
+.m-to { fill: var(--fg); stroke: var(--accent); stroke-width: 3; }
+
+.cta {
+  width: 100%; min-height: 54px; border: 0; border-radius: 16px;
+  background: var(--accent); color: var(--accent-fg); font-weight: 600; font-size: 17px;
+}
+.cta:disabled { background: var(--surface-2); color: var(--muted); cursor: not-allowed; }
+.notice { background: var(--surface-2); border-radius: 14px; padding: 12px 14px; font-size: 15px; display: grid; gap: 2px; }
+.notice strong { color: var(--good); }
+.notice.err strong { color: var(--fg); }
+.cancel { justify-self: start; margin-top: 6px; background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px; min-height: 40px; }
+
+.list { display: grid; gap: 10px; }
+.item { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 16px; display: grid; gap: 4px; }
+.item .route { font-weight: 600; overflow-wrap: anywhere; }
+.item .meta { color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 12px; font-variant-numeric: tabular-nums; }
+.tag { background: var(--surface-2); border-radius: 999px; padding: 0 8px; }
+.note { color: var(--muted); font-size: 14px; }
+
+.pf label { display: grid; gap: 6px; font-weight: 600; }
+.pf .field input { padding: 12px 0; }
+
+.nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+  background: var(--surface); border-top: 1px solid var(--line);
+  padding: 6px max(16px, env(safe-area-inset-left, 0px)) calc(6px + env(safe-area-inset-bottom, 0px));
+}
+.nav-in { max-width: 480px; margin-inline: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.nav button {
+  background: transparent; border: 0; border-radius: 14px; min-height: 54px;
+  display: grid; justify-items: center; align-content: center; gap: 2px; color: var(--muted); font-size: 13px;
+}
+.nav button[aria-current="page"] { color: var(--accent); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .cta, .chip, .lang { transition: background-color .15s, color .15s; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="wordmark">ROMA DR</div>
+      <div class="sub" data-i18n="sub"></div>
+    </div>
+    <button class="lang" id="lang" type="button"></button>
+  </header>
+
+  <section id="view-trips" class="app" style="gap:16px">
+    <div class="stats">
+      <div class="tile">
+        <div class="lbl" data-i18n="fare"></div>
+        <div class="val" id="fareVal"></div>
+        <div class="hint" id="fareHint"></div>
+      </div>
+      <div class="tile">
+        <div class="lbl" data-i18n="recent"></div>
+        <div class="val" id="recentVal"></div>
+        <div class="hint" data-i18n="recentHint"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="field-label" data-i18n="from"></div>
+      <div class="field">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>
+        <div class="picked" id="fromPicked"></div>
+      </div>
+      <div class="chips" id="fromChips"></div>
+
+      <div class="field-label" data-i18n="to"></div>
+      <div class="field">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+        <input id="dest" type="text" autocomplete="off" data-i18n-ph="toPh">
+      </div>
+      <div class="suggest" id="suggest"></div>
+    </div>
+
+    <div class="card">
+      <div class="map-title"><div data-i18n="mapTitle"></div><span data-i18n="mapNote"></span></div>
+      <div class="map-wrap"><svg id="map" viewBox="0 0 320 200" role="img" aria-label="map"></svg></div>
+    </div>
+
+    <button class="cta" id="cta" type="button"></button>
+    <div class="notice" id="notice" role="status" hidden>
+      <strong id="noticeTitle"></strong>
+      <span id="noticeBody"></span>
+      <button type="button" class="cancel" id="cancelRide" data-i18n="cancel" hidden></button>
+    </div>
+  </section>
+
+  <section id="view-history" class="list" hidden>
+    <div class="field-label" data-i18n="nHistory"></div>
+    <div class="list" id="histList"></div>
+    <div class="note" id="histNote"></div>
+  </section>
+
+  <section id="view-profile" class="card pf" hidden>
+    <div class="field-label" data-i18n="nProfile"></div>
+    <div class="notice" id="pfHint" hidden><strong data-i18n="needProfile"></strong></div>
+    <label for="pname"><span data-i18n="name"></span>
+      <span class="field"><input id="pname" type="text" autocomplete="name"></span>
+    </label>
+    <label for="pphone"><span data-i18n="phone"></span>
+      <span class="field"><input id="pphone" type="tel" inputmode="tel" autocomplete="tel" dir="ltr" style="text-align:start"></span>
+    </label>
+    <div class="note" data-i18n="profNote"></div>
+  </section>
+</div>
+
+<nav class="nav" aria-label="main">
+  <div class="nav-in">
+    <button type="button" data-tab="trips">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+      <span data-i18n="nTrips"></span>
+    </button>
+    <button type="button" data-tab="history">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      <span data-i18n="nHistory"></span>
+    </button>
+    <button type="button" data-tab="profile">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>
+      <span data-i18n="nProfile"></span>
+    </button>
+  </div>
+</nav>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getFirestore, collection, addDoc, doc, onSnapshot, updateDoc, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+var firebaseConfig = {
+  apiKey: "AIzaSyCwVkyyZBUtxthiahZz4gb7WxRqzLCdXx0",
+  authDomain: "roma-dr.firebaseapp.com",
+  projectId: "roma-dr",
+  storageBucket: "roma-dr.firebasestorage.app",
+  messagingSenderId: "731987941297",
+  appId: "1:731987941297:web:558791382c0088297ecf90"
+};
+var db = getFirestore(initializeApp(firebaseConfig));
+
+(function () {
+  var T = {
+    ar: {
+      sub: 'دمشق وريفها', fare: 'الأجرة التقديرية', recent: 'رحلات حديثة', recentHint: 'على هذا الهاتف',
+      from: 'موقع الانطلاق', to: 'الوجهة', toPh: 'إلى أين تريد الذهاب؟',
+      mapTitle: 'مخطط دمشق', mapNote: 'تقريبي',
+      request: 'اطلب رحلة', requestDis: 'اختر الوجهة أولاً',
+      nTrips: 'الرحلات', nHistory: 'السجل', nProfile: 'الملف الشخصي',
+      st_searching: 'جاري البحث عن سائق', stSearchingB: 'تم إرسال طلبك. انتظر حتى يقبله أحد السائقين.',
+      st_accepted: 'قبل السائق طلبك', st_arrived: 'وصل السائق', st_started: 'الرحلة بدأت',
+      st_completed: 'انتهت الرحلة', st_cancelled: 'أُلغي الطلب', driver: 'السائق', fareWord: 'الأجرة',
+      needProfile: 'اكتب اسمك ورقم هاتفك هنا أولاً ليتصل بك السائق، ثم ارجع واطلب الرحلة.',
+      sendErr: 'تعذّر إرسال الطلب. تأكد من الإنترنت وحاول مرة ثانية.', cancel: 'إلغاء الطلب',
+      histEmpty: 'هذه أمثلة فقط. طلباتك الحقيقية ستظهر هنا.', histReal: 'تُحفظ الرحلات على هذا الهاتف فقط.',
+      example: 'مثال', name: 'الاسم', phone: 'رقم الهاتف', profNote: 'تُحفظ هذه البيانات على هاتفك فقط.',
+      sy: 'ل.س', km: 'كم', pick: 'اختر الوجهة', byDist: 'حسب المسافة', other: 'English'
+    },
+    en: {
+      sub: 'Damascus & countryside', fare: 'Estimated fare', recent: 'Recent trips', recentHint: 'On this phone',
+      from: 'Pickup', to: 'Destination', toPh: 'Where do you want to go?',
+      mapTitle: 'Damascus map', mapNote: 'approximate',
+      request: 'Request a ride', requestDis: 'Choose a destination first',
+      nTrips: 'Rides', nHistory: 'History', nProfile: 'Profile',
+      st_searching: 'Looking for a driver', stSearchingB: 'Your request was sent. Wait for a driver to accept it.',
+      st_accepted: 'A driver accepted', st_arrived: 'Your driver has arrived', st_started: 'Trip started',
+      st_completed: 'Trip finished', st_cancelled: 'Request cancelled', driver: 'Driver', fareWord: 'Fare',
+      needProfile: 'Enter your name and phone number here first so the driver can call you, then go back and request.',
+      sendErr: 'Could not send the request. Check your internet and try again.', cancel: 'Cancel request',
+      histEmpty: 'These are examples only. Your real requests will appear here.', histReal: 'Trips are stored on this phone only.',
+      example: 'Example', name: 'Name', phone: 'Phone number', profNote: 'This information stays on your phone only.',
+      sy: 'SYP', km: 'km', pick: 'Choose destination', byDist: 'By distance', other: 'العربية'
+    }
+  };
+
+  var P = {
+    mezzeh:   { ar: 'المزة',        en: 'Mezzeh',       lat: 33.5000, lon: 36.2500 },
+    shaalan:  { ar: 'الشعلان',      en: 'Shaalan',      lat: 33.5160, lon: 36.2930 },
+    dummar:   { ar: 'مشروع دمر',    en: 'Dummar Project', lat: 33.5330, lon: 36.2330 },
+    jaramana: { ar: 'جرمانا',       en: 'Jaramana',     lat: 33.4900, lon: 36.3500 },
+    midan:    { ar: 'الميدان',      en: 'Midan',        lat: 33.4900, lon: 36.2950 },
+    babtouma: { ar: 'باب توما',     en: 'Bab Touma',    lat: 33.5130, lon: 36.3180 },
+    barzeh:   { ar: 'برزة',         en: 'Barzeh',       lat: 33.5560, lon: 36.3200 },
+    kafr:     { ar: 'كفرسوسة',      en: 'Kafr Sousa',   lat: 33.4950, lon: 36.2780 }
+  };
+  var ORDER = ['mezzeh', 'shaalan', 'dummar', 'jaramana', 'midan', 'babtouma', 'barzeh', 'kafr'];
+
+  var KEY = 'romadr.v1';
+  var state = { lang: 'ar', tab: 'trips', from: 'shaalan', to: null, q: '', sent: false, history: [], name: '', phone: '', ride: null, rideId: null, err: null };
+  var ACTIVE = ['searching', 'accepted', 'arrived', 'started'];
+  var RKEY = 'romadr.ride';
+  var unsub = null;
+
+  function load() {
+    try {
+      var d = JSON.parse(localStorage.getItem(KEY) || '{}');
+      if (Array.isArray(d.history)) state.history = d.history.filter(function (r) { return P[r.from] && P[r.to] && isFinite(r.fare); });
+      if (d.lang === 'en' || d.lang === 'ar') state.lang = d.lang;
+      if (typeof d.name === 'string') state.name = d.name;
+      if (typeof d.phone === 'string') state.phone = d.phone;
+    } catch (e) {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify({ history: state.history.slice(0, 50), lang: state.lang, name: state.name, phone: state.phone })); } catch (e) {}
+  }
+
+  function t(k) { return T[state.lang][k]; }
+  function nm(k) { return P[k][state.lang]; }
+  function $(id) { return document.getElementById(id); }
+
+  function km(a, b) {
+    var R = 6371, rad = Math.PI / 180;
+    var dLat = (P[b].lat - P[a].lat) * rad, dLon = (P[b].lon - P[a].lon) * rad;
+    var x = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(P[a].lat * rad) * Math.cos(P[b].lat * rad) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return 2 * R * Math.asin(Math.sqrt(x)) * 1.3;
+  }
+  function fare(a, b) { return Math.round((10000 + 5500 * km(a, b)) / 500) * 500; }
+  function money(n) { return n.toLocaleString('en-US') + ' ' + t('sy'); }
+  function oneDec(n) { return (Math.round(n * 10) / 10).toFixed(1); }
+
+  function renderStatic() {
+    var L = state.lang;
+    document.documentElement.setAttribute('lang', L);
+    document.documentElement.setAttribute('dir', L === 'ar' ? 'rtl' : 'ltr');
+    document.querySelectorAll('[data-i18n]').forEach(function (el) { el.textContent = t(el.getAttribute('data-i18n')); });
+    document.querySelectorAll('[data-i18n-ph]').forEach(function (el) { el.setAttribute('placeholder', t(el.getAttribute('data-i18n-ph'))); });
+    $('lang').textContent = t('other');
+  }
+
+  function renderChips() {
+    $('fromChips').innerHTML = ORDER.map(function (k) {
+      return '<button type="button" class="chip" data-from="' + k + '" aria-pressed="' + (k === state.from) + '">' + nm(k) + '</button>';
+    }).join('');
+    $('fromPicked').textContent = nm(state.from);
+  }
+
+  function renderSuggest() {
+    var q = state.q.trim().toLowerCase();
+    var list = ORDER.filter(function (k) {
+      if (k === state.from) return false;
+      if (state.to && !q) return false;
+      return !q || P[k].ar.indexOf(q) > -1 || P[k].en.toLowerCase().indexOf(q) > -1;
+    });
+    $('suggest').innerHTML = list.map(function (k) {
+      return '<button type="button" data-to="' + k + '"><span>' + nm(k) + '</span><span class="dist">' + oneDec(km(state.from, k)) + ' ' + t('km') + '</span></button>';
+    }).join('');
+  }
+
+  function renderStats() {
+    if (state.to) {
+      $('fareVal').textContent = money(fare(state.from, state.to));
+      $('fareHint').textContent = oneDec(km(state.from, state.to)) + ' ' + t('km') + ' · ' + nm(state.from) + ' → ' + nm(state.to);
+    } else {
+      $('fareVal').textContent = '—';
+      $('fareHint').textContent = t('pick');
+    }
+    $('recentVal').textContent = String(state.history.length);
+  }
+
+  function pt(k) {
+    return { x: (P[k].lon - 36.22) / 0.14 * 280 + 20, y: (33.57 - P[k].lat) / 0.09 * 160 + 20 };
+  }
+  function renderMap() {
+    var s = '<rect class="m-bg" width="320" height="200"/>' +
+      '<path class="m-street" d="M0 70 Q100 58 320 92"/><path class="m-street" d="M0 132 Q120 120 320 142"/>' +
+      '<path class="m-street" d="M62 0 Q74 100 50 200"/><path class="m-street" d="M150 0 Q162 100 140 200"/><path class="m-street" d="M236 0 Q246 100 252 200"/>';
+    if (state.to) {
+      var a = pt(state.from), b = pt(state.to);
+      var cx = (a.x + b.x) / 2 - (b.y - a.y) * 0.2, cy = (a.y + b.y) / 2 + (b.x - a.x) * 0.2;
+      s += '<path class="m-route" d="M' + a.x.toFixed(1) + ' ' + a.y.toFixed(1) + ' Q' + cx.toFixed(1) + ' ' + cy.toFixed(1) + ' ' + b.x.toFixed(1) + ' ' + b.y.toFixed(1) + '"/>';
+    }
+    ORDER.forEach(function (k) {
+      var p = pt(k), on = k === state.from || k === state.to;
+      var cls = k === state.from ? 'm-from' : (k === state.to ? 'm-to' : 'm-dot');
+      s += '<circle class="' + cls + '" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + (on ? 7 : 3.5) + '"/>';
+      s += '<text class="m-label' + (on ? ' on' : '') + '" x="' + p.x.toFixed(1) + '" y="' + (p.y + (on ? 20 : 15)).toFixed(1) + '">' + nm(k) + '</text>';
+    });
+    $('map').innerHTML = s;
+  }
+
+  function renderCta() {
+    var b = $('cta'), r = state.ride;
+    var active = !!r && ACTIVE.indexOf(r.status) > -1;
+    b.disabled = !state.to || active;
+    b.textContent = active ? t('st_' + r.status) : (state.to ? t('request') : t('requestDis'));
+    var n = $('notice'), title = '', body = '', cancel = false, err = false;
+    if (state.err && state.err !== 'needProfile') {
+      err = true; title = t(state.err);
+    } else if (r) {
+      title = t('st_' + r.status);
+      if (r.status === 'searching') { body = t('stSearchingB'); cancel = true; }
+      else if (r.status === 'cancelled') { body = ''; }
+      else {
+        body = t('driver') + ': ' + (r.driverName || '') + (r.driverPhone ? ' · ' + r.driverPhone : '') +
+          ' · ' + t('fareWord') + ': ' + money(r.fare);
+      }
+    }
+    n.hidden = !title;
+    n.className = 'notice' + (err ? ' err' : '');
+    $('noticeTitle').textContent = title;
+    $('noticeBody').textContent = body;
+    $('cancelRide').hidden = !cancel;
+    $('pfHint').hidden = state.err !== 'needProfile';
+  }
+
+  function clearTerminal() {
+    state.err = null;
+    if (state.ride && ACTIVE.indexOf(state.ride.status) === -1) { state.ride = null; state.rideId = null; }
+  }
+
+  function watch(id) {
+    if (unsub) { unsub(); unsub = null; }
+    state.rideId = id;
+    unsub = onSnapshot(doc(db, 'rides', id), function (snap) {
+      if (!snap.exists()) { state.ride = null; try { localStorage.removeItem(RKEY); } catch (e) {} renderCta(); return; }
+      state.ride = snap.data();
+      if (ACTIVE.indexOf(state.ride.status) === -1) { try { localStorage.removeItem(RKEY); } catch (e) {} }
+      renderCta();
+    }, function () { state.err = 'sendErr'; renderCta(); });
+  }
+
+  async function requestRide() {
+    if (!state.name.trim() || !state.phone.trim()) {
+      state.err = 'needProfile'; state.tab = 'profile'; renderTabs(); renderCta(); window.scrollTo(0, 0); return;
+    }
+    state.err = null;
+    $('cta').disabled = true;
+    var f = fare(state.from, state.to);
+    try {
+      var ref = await addDoc(collection(db, 'rides'), {
+        from: state.from, to: state.to, fromName: P[state.from].ar, toName: P[state.to].ar,
+        fare: f, km: Math.round(km(state.from, state.to) * 10) / 10,
+        riderName: state.name.trim(), riderPhone: state.phone.trim(),
+        status: 'searching', driverName: null, driverPhone: null, createdAt: serverTimestamp()
+      });
+      state.history.unshift({ from: state.from, to: state.to, fare: f, ts: Date.now() });
+      save();
+      try { localStorage.setItem(RKEY, ref.id); } catch (e) {}
+      watch(ref.id);
+    } catch (e) {
+      state.err = 'sendErr';
+    }
+    renderStats(); renderCta(); renderHistory();
+  }
+
+  async function cancelRide() {
+    if (!state.rideId || !state.ride || state.ride.status !== 'searching') return;
+    try { await updateDoc(doc(db, 'rides', state.rideId), { status: 'cancelled' }); } catch (e) { state.err = 'sendErr'; renderCta(); }
+  }
+
+  function fmtDate(ts) {
+    try { return new Date(ts).toLocaleDateString(state.lang === 'ar' ? 'ar-u-nu-latn' : 'en-GB'); } catch (e) { return ''; }
+  }
+  function renderHistory() {
+    var items = state.history, ex = false;
+    if (!items.length) {
+      ex = true;
+      var d = 86400000, now = Date.now();
+      items = [
+        { from: 'mezzeh', to: 'shaalan', ts: now - d },
+        { from: 'dummar', to: 'babtouma', ts: now - 2 * d },
+        { from: 'jaramana', to: 'midan', ts: now - 4 * d }
+      ].map(function (r) { r.fare = fare(r.from, r.to); return r; });
+    }
+    $('histList').innerHTML = items.map(function (r) {
+      return '<div class="item"><div class="route">' + nm(r.from) + ' → ' + nm(r.to) + '</div><div class="meta"><span>' +
+        money(r.fare) + '</span><span>' + oneDec(km(r.from, r.to)) + ' ' + t('km') + '</span><span>' + fmtDate(r.ts) + '</span>' +
+        (ex ? '<span class="tag">' + t('example') + '</span>' : '') + '</div></div>';
+    }).join('');
+    $('histNote').textContent = ex ? t('histEmpty') : t('histReal');
+  }
+
+  function renderTabs() {
+    ['trips', 'history', 'profile'].forEach(function (k) { $('view-' + k).hidden = state.tab !== k; });
+    document.querySelectorAll('.nav button').forEach(function (b) {
+      if (b.getAttribute('data-tab') === state.tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
+  }
+
+  function renderAll() {
+    renderStatic(); renderChips(); renderSuggest(); renderStats(); renderMap(); renderCta(); renderHistory(); renderTabs();
+    $('dest').value = state.to ? nm(state.to) : state.q;
+  }
+
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('button');
+    if (!el) return;
+    if (el.id === 'lang') { state.lang = state.lang === 'ar' ? 'en' : 'ar'; save(); renderAll(); return; }
+    if (el.hasAttribute('data-from')) {
+      state.from = el.getAttribute('data-from');
+      if (state.to === state.from) state.to = null;
+      clearTerminal(); renderAll(); return;
+    }
+    if (el.hasAttribute('data-to')) {
+      state.to = el.getAttribute('data-to'); state.q = ''; clearTerminal(); renderAll(); return;
+    }
+    if (el.hasAttribute('data-tab')) { state.tab = el.getAttribute('data-tab'); renderTabs(); window.scrollTo(0, 0); return; }
+    if (el.id === 'cta' && state.to) { requestRide(); return; }
+    if (el.id === 'cancelRide') { cancelRide(); return; }
+  });
+
+  $('dest').addEventListener('input', function (e) {
+    state.q = e.target.value; state.to = null; clearTerminal();
+    renderSuggest(); renderStats(); renderMap(); renderCta();
+  });
+  $('pname').addEventListener('input', function (e) { state.name = e.target.value; save(); });
+  $('pphone').addEventListener('input', function (e) { state.phone = e.target.value; save(); });
+
+  load();
+  try { var saved = localStorage.getItem(RKEY); if (saved) watch(saved); } catch (e) {}
+  $('pname').value = state.name;
+  $('pphone').value = state.phone;
+  renderAll();
+})();
+</script>
+</body>
+</html>
