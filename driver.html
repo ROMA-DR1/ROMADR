@@ -40,6 +40,8 @@ button, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .app { max-width: 480px; margin-inline: auto; display: grid; gap: 16px; }
+.app > * { min-width: 0; }
+html, body { overflow-x: hidden; }
 .wordmark { font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: 0.04em; line-height: 1.1; }
 .sub { color: var(--muted); font-size: 14px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
